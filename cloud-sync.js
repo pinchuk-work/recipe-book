@@ -102,7 +102,7 @@
         if(!timer)timer=setInterval(()=>{if(!book){void connect().catch(()=>{});}else{void flush();void pull().catch(()=>notify('Нет связи с базой. Правки сохраняются на устройстве.'));}},10000);
       }else notify();
     }
-    function importLocal(value){const combined=compose();for(const group of GROUPS)Object.assign(combined[group],value[group]||{});capture(combined);publish();}
+    function importLocal(value){const combined=compose();for(const group of GROUPS)Object.assign(combined[group],value[group]||{});capture(combined);publish(true);}
     window.addEventListener('online',()=>{void flush();void pull().catch(()=>{});});
     window.addEventListener('focus',()=>{void flush();void pull().catch(()=>{});});
     return {enabled,start,login,logout,capture,resolve,importLocal,pull,flush,edit(kind,key){const record=id(kind,key);locks[record]=rows[record]?.revision??0;},endEdit(){locks={};},get connected(){return !!book;},get snapshot(){return compose();},stop(){stopped=true;clearInterval(timer);}};
