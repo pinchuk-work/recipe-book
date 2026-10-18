@@ -32,6 +32,7 @@
   const categories=['Все рецепты','Завтрак','Обед','Ужин','Выпечка','Десерт','Напитки','Перекус','Салат','Соус'];
   let cloud=null,cloudState={enabled:false,authenticated:false,pending:0,conflicts:[],message:''};
   const LOCAL_BACKUP=KEY+'.before-cloud';
+  let authPending=true;
   function save(){ try { localStorage.setItem(KEY,JSON.stringify(prefs));if(cloud?.connected)cloud.capture(prefs);else localStorage.setItem(LOCAL_BACKUP,JSON.stringify(prefs));return true; } catch {toast('Не удалось сохранить: память браузера заполнена.');return false;} }
   function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),3200);}
   function recipe(id){const r=base.find(r=>r.id===id);return r?{...r,...prefs.overrides[id],photo:prefs.photos[id] || r.photo}:null;}
@@ -54,7 +55,7 @@
     return groups.map(g=>`${g.title?`<h3 class="step-group-title">${esc(g.title)}</h3>`:''}<ol class="steps">${g.steps.map(s=>`<li><span>${esc(s)}</span></li>`).join('')}</ol>`).join('');
   }
   function favorite(r){return `<button class="favorite icon-button ${prefs.favorites[r.id]?'active':''}" data-favorite="${r.id}" aria-label="${prefs.favorites[r.id]?'Убрать из избранного':'В избранное'}: ${esc(r.title)}" aria-pressed="${!!prefs.favorites[r.id]}">${icon('heart')}</button>`;}
-  function header(){ $('#shopping-nav').innerHTML=icon('bag')+(Object.keys(prefs.basket).filter(k=>prefs.basket[k]).length?`<span class="nav-count">${Object.keys(prefs.basket).filter(k=>prefs.basket[k]).length}</span>`:'');$('#settings-nav').innerHTML=icon('settings'); }
+  function header(){ $('#shopping-nav').hidden=!cloudState.authenticated;$('#settings-nav').hidden=!cloudState.authenticated;$('#shopping-nav').innerHTML=icon('bag')+(Object.keys(prefs.basket).filter(k=>prefs.basket[k]).length?`<span class="nav-count">${Object.keys(prefs.basket).filter(k=>prefs.basket[k]).length}</span>`:'');$('#settings-nav').innerHTML=icon('settings'); }
   function filtered(){
     const q=state.query.trim().toLocaleLowerCase('ru').replace(/ё/g,'е');
     let rs=all().filter(r=>(state.category==='Все рецепты'||r.categories.includes(state.category))&&(!state.onlyFavorites||prefs.favorites[r.id])&&state.tags.every(t=>r.tags.includes(t))&&(!q||`${r.title} ${(r.aliases||[]).join(' ')} ${r.tags.join(' ')} ${r.categories.join(' ')} ${r.ingredients.join(' ')} ${r.original}`.toLocaleLowerCase('ru').replace(/ё/g,'е').includes(q)));
@@ -131,7 +132,13 @@
   document.addEventListener('change',e=>{if(e.target.matches('[data-check]')){prefs.checked[e.target.dataset.check]=e.target.checked;save();}});
   $('#shopping-nav').onclick=()=>{location.hash='shopping';};$('#settings-nav').onclick=settings;
   dialog.addEventListener('click',e=>{if(e.target===dialog){const b=dialog.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)dialog.close();}});
-  function route(){header();if(location.hash.startsWith('#recipe/'))detail(location.hash.slice(8));else if(location.hash==='#shopping')shopping();else catalog();}
+  function route(){header();if(!cloudState.authenticated){if(dialog.open)dialog.close();loginScreen();return;}if(location.hash.startsWith('#recipe/'))detail(location.hash.slice(8));else if(location.hash==='#shopping')shopping();else catalog();}
+  function loginScreen(){
+    if(authPending){app.innerHTML='<section class="login-screen"><div class="login-card"><div class="eyebrow">Наша книга рецептов</div><h1>К столу</h1><p role="status">Проверяем вход…</p></div></section>';return;}
+    if($('#site-login'))return;
+    app.innerHTML=`<section class="login-screen"><div class="login-card"><div class="eyebrow">Наша книга рецептов</div><h1>Рады видеть<br>за столом.</h1><p>Войди, чтобы открыть рецепты и общий список покупок.</p><form id="site-login"><label class="form-label" for="site-email">Email</label><input class="form-input" type="email" id="site-email" autocomplete="username" required><label class="form-label" for="site-password">Пароль</label><input class="form-input" type="password" id="site-password" autocomplete="current-password" required><p id="site-login-error" role="alert">${esc(cloudState.message||'')}</p><button class="primary-button" type="submit" ${cloud?.enabled?'':'disabled'}>Войти в книгу</button></form></div></section>`;
+    $('#site-login').onsubmit=async e=>{e.preventDefault();const button=e.currentTarget.querySelector('[type=submit]');button.disabled=true;$('#site-login-error').textContent='';try{await cloud.login($('#site-email').value.trim(),$('#site-password').value);route();}catch(error){const output=$('#site-login-error');if(output)output.textContent=error.message.includes('Invalid login')?'Проверь email и пароль.':'Не удалось войти. '+error.message;button.disabled=false;}};
+  }
   function cleanShared(value){
     const ids=new Set(base.map(r=>r.id)),result={overrides:{},favorites:{},basket:{},checked:{},photos:{}};
     for(const [id,v] of Object.entries(value.overrides||{}))if(ids.has(id)&&v&&typeof v.title==='string'&&['categories','tags','ingredients','steps'].every(k=>Array.isArray(v[k])&&v[k].every(s=>typeof s==='string'))&&v.categories.every(c=>categories.includes(c)))result.overrides[id]={title:v.title,categories:v.categories,tags:v.tags,ingredients:v.ingredients,steps:v.steps};
@@ -142,10 +149,12 @@
   }
   function cloudStatus(){
     let button=$('#cloud-nav');if(!button){button=document.createElement('button');button.id='cloud-nav';button.className='cloud-nav';button.onclick=cloudDialog;$('.header-inner nav').prepend(button);}
+    button.hidden=!cloudState.authenticated;
     button.textContent=!cloudState.authenticated?'Войти':cloudState.conflicts.length?'Конфликт правок':cloudState.pending?'Отправка…':cloudState.message?'Нет связи':'Общая книга';button.title=cloudState.message||'Синхронизация между устройствами';button.classList.toggle('cloud-warning',!!cloudState.message||!!cloudState.conflicts.length);
     if($('#cloud-state'))$('#cloud-state').textContent=cloudState.message||(cloudState.pending?'Ожидают синхронизации: '+cloudState.pending:'Общие изменения сохранены.');
   }
   function cloudDialog(){
+    if(!cloudState.authenticated){route();$('#site-email')?.focus();return;}
     if(!cloud?.enabled){showDialog(`<div class="dialog-heading"><h2 id="dialog-title">Общая книга</h2><button class="icon-button close-dialog" aria-label="Закрыть">${icon('close')}</button></div><p>Подключение общей базы ещё настраивается. Текущие правки сохранены на устройстве.</p>`);return;}
     showDialog(`<div class="dialog-heading"><h2 id="dialog-title">Наша книга</h2><button class="icon-button close-dialog" aria-label="Закрыть">${icon('close')}</button></div>${cloudState.authenticated?`<p>Вы вошли как <strong>${esc(cloudState.user)}</strong>. Все изменения в этой книге общие для вас двоих. Синхронизация работает автоматически — ничего нажимать не нужно.</p><p id="cloud-state" role="status">${esc(cloudState.message||(cloudState.pending?'Ожидают синхронизации: '+cloudState.pending:'Общие изменения сохранены.'))}</p><div class="setting-actions"><button class="subtle-button" id="cloud-logout">Выйти</button></div>${cloudState.conflicts.length?`<h3>Одновременные правки</h3>${cloudState.conflicts.map((c,i)=>`<div class="cloud-conflict"><p>${esc(base.find(r=>r.id===c.item_key.split(':')[0])?.title||c.item_key)} · ${esc(c.kind)}</p><details><summary>Сравнить версии</summary><pre>${esc(JSON.stringify({моя:c.local,общая:c.remote.value},null,2))}</pre></details><button class="subtle-button" data-resolve-local="${i}">Оставить мою</button> <button class="subtle-button" data-resolve-remote="${i}">Принять общую</button></div>`).join('')}`:''}`:`<p>Войдите своим email и паролем, чтобы пользоваться общей книгой на телефоне и компьютере. Доступ есть только у вас двоих.</p><form id="cloud-login"><label class="form-label" for="cloud-email">Email</label><input class="form-input" type="email" id="cloud-email" autocomplete="username" required><label class="form-label" for="cloud-password">Пароль</label><input class="form-input" type="password" id="cloud-password" autocomplete="current-password" required><p id="cloud-login-error" role="alert"></p><div class="dialog-actions"><button class="primary-button" type="submit">Войти в общую книгу</button></div></form>`}`);
     if($('#cloud-login'))$('#cloud-login').onsubmit=async e=>{e.preventDefault();const button=dialog.querySelector('[type=submit]');button.disabled=true;try{if(!localStorage.getItem(LOCAL_BACKUP))localStorage.setItem(LOCAL_BACKUP,JSON.stringify(prefs));await cloud.login($('#cloud-email').value.trim(),$('#cloud-password').value);dialog.close();cloudDialog();toast('Общая книга подключена');}catch(error){$('#cloud-login-error').textContent=error.message.includes('Invalid login')?'Проверьте email и пароль.':error.message;button.disabled=false;}};
@@ -156,6 +165,6 @@
   window.addEventListener('hashchange',()=>{route();window.scrollTo(0,0);});window.addEventListener('storage',e=>{if(e.key===KEY){try{prefs=JSON.parse(e.newValue)||prefs;header();route();}catch{}}});route();
   if(window.createRecipeCloud){
     try{if(!localStorage.getItem(LOCAL_BACKUP))localStorage.setItem(LOCAL_BACKUP,JSON.stringify(prefs));}catch{}
-    cloud=window.createRecipeCloud({config:window.RECIPE_CLOUD_CONFIG,legacy(){try{return cleanShared(JSON.parse(localStorage.getItem(LOCAL_BACKUP)||'{}'));}catch{return {}; }},apply(value){prefs={...cleanShared(value),view:state.view};try{localStorage.setItem(KEY,JSON.stringify(prefs));}catch{}const searchFocused=document.activeElement?.id==='search';const pos=searchFocused?$('#search').selectionStart:null;if(!dialog.open){route();if(searchFocused){$('#search')?.focus();$('#search')?.setSelectionRange(pos,pos);}}},status(value){cloudState=value;cloudStatus();}});void cloud.start();
-  }
+    cloud=window.createRecipeCloud({config:window.RECIPE_CLOUD_CONFIG,legacy(){try{return cleanShared(JSON.parse(localStorage.getItem(LOCAL_BACKUP)||'{}'));}catch{return {}; }},apply(value){prefs={...cleanShared(value),view:state.view};try{localStorage.setItem(KEY,JSON.stringify(prefs));}catch{}const searchFocused=document.activeElement?.id==='search';const pos=searchFocused?$('#search').selectionStart:null;if(!dialog.open){route();if(searchFocused){$('#search')?.focus();$('#search')?.setSelectionRange(pos,pos);}}},status(value){const changed=cloudState.authenticated!==value.authenticated;cloudState=value;cloudStatus();if(changed)route();}});void cloud.start().finally(()=>{authPending=false;route();});
+  }else{authPending=false;route();}
 })();
