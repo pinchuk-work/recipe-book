@@ -22,7 +22,7 @@ jobs:
       - name: Prepare static files
         run: |
           mkdir _site
-          cp index.html app.js style.css recipes.js favicon.svg .nojekyll _site/
+          cp index.html app.js cloud-config.js cloud-sync.js style.css recipes.js favicon.svg .nojekyll _site/
           cp -r images _site/
       - uses: actions/upload-pages-artifact@v3
         with:
