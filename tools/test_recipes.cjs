@@ -1,0 +1,11 @@
+const vm=require('node:vm'),assert=require('node:assert/strict'),fs=require('node:fs');
+const src=fs.readFileSync('app.js','utf8');const base=[{id:'base1',title:'Основа',tags:['Средне'],categories:['Обед'],ingredients:[],steps:[]}];
+const ctx={base,prefs:{overrides:{},photos:{}},categories:['Все рецепты','Обед']};
+vm.runInNewContext(src.slice(src.indexOf('  const speeds='),src.indexOf('  function image('))+src.slice(src.indexOf('  function cleanShared('),src.indexOf('  async function signOut('))+';this.api={cleanShared,all,recipe,availableCategories};',ctx);
+const id='u'+'a'.repeat(32),entry={custom:true,title:'Мой салат',categories:['На пикник'],tags:['Свой тег','Быстро'],ingredients:['Огурец'],steps:['Нарезать'],sources:['https://example.com/recipe'],original:'Моя заметка',minutes:10,servings:2};
+let result=ctx.api.cleanShared({overrides:{[id]:entry},photos:{[id]:'data:image/jpeg;base64,AA=='},favorites:{[id]:true},checked:{[id+':0']:true}});assert.equal(result.overrides[id].sources[0],entry.sources[0]);assert.equal(result.overrides[id].original,entry.original);assert.equal(result.checked[id+':0'],true);assert.equal(result.photos[id],'data:image/jpeg;base64,AA==');Object.assign(ctx.prefs,result);assert.equal(ctx.api.all().length,2);assert(ctx.api.availableCategories().includes('На пикник'));assert(ctx.api.recipe(id).tags.includes('Салат'));
+assert.equal(Object.keys(ctx.api.cleanShared({overrides:{[id]:{...entry,sources:['javascript:alert(1)']}}}).overrides).length,0);
+assert.equal(Object.keys(ctx.api.cleanShared({overrides:{other:entry}}).overrides).length,0);
+const normal=ctx.api.cleanShared({overrides:{base1:{title:'Правка',categories:['Новая'],tags:['Свой'],ingredients:[],steps:[]}}});assert.equal(normal.overrides.base1.categories[0],'Новая');
+const data={window:{}};vm.runInNewContext(fs.readFileSync('recipes.js','utf8'),data);for(const r of data.window.RECIPES){assert(!r.tags.includes('Рецепт в видео'));assert.equal(r.tags.filter(t=>['Быстро','Средне','Долго'].includes(t)).length,1);if(/салат|цезарь/i.test(r.title)||r.categories.includes('Салат'))assert(r.tags.includes('Салат'));}
+console.log('PASS: custom recipes/categories/tags, sources/notes/photos/checks round-trip, invalid input rejected, enriched collection.');

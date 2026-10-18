@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('k-stolu.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}catch{}</script>
   <meta name="theme-color" content="#f7f8f4">
   <meta name="description" content="Моя коллекция любимых рецептов: ингредиенты, приготовление и список покупок.">
   <title>К столу — моя книга рецептов</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=20261018-login">
-  <script src="recipes.js" defer></script>
-  <script src="cloud-config.js?v=20261018-login" defer></script>
-  <script src="cloud-sync.js?v=20261018-login" defer></script>
-  <script src="app.js?v=20261018-login" defer></script>
+  <link rel="stylesheet" href="style.css?v=20261018-features">
+  <script src="recipes.js?v=20261018-features" defer></script>
+  <script src="cloud-config.js?v=20261018-features" defer></script>
+  <script src="cloud-sync.js?v=20261018-features" defer></script>
+  <script src="app.js?v=20261018-features" defer></script>
 </head>
 <body>
   <header class="site-header"><div class="header-inner">
@@ -20,7 +21,7 @@
     <nav aria-label="Главная навигация"><button class="icon-button" id="shopping-nav" hidden title="Список покупок" aria-label="Список покупок"></button><button class="icon-button" id="settings-nav" hidden title="Настройки и резервная копия" aria-label="Настройки и резервная копия"></button></nav>
   </div></header>
   <main id="app"><p class="loading">Проверяем вход…</p></main>
-  <footer class="site-footer"><span>Хорошая еда начинается с хорошего рецепта.</span><span>Моя маленькая кулинарная коллекция</span></footer>
+
   <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
   <noscript>Для поиска и карточек рецептов включите JavaScript в браузере.</noscript>
