@@ -133,6 +133,10 @@ def create(spec):
 if __name__=='__main__':
     (SITE/'images').mkdir(parents=True,exist_ok=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool: recipes=list(pool.map(create,SPECS))
+    notion=SITE/'tools'/'notion-library.json'
+    if notion.exists():
+        from import_notion import merge
+        recipes=merge(recipes,json.loads(notion.read_text(encoding='utf-8')))
     (SITE/'recipes.js').write_text('window.RECIPES = '+json.dumps(recipes,ensure_ascii=False,indent=2)+';\n',encoding='utf-8')
     print('Built',len(recipes),'recipes; photos:',sum(bool(r['photo']) for r in recipes))
     for r in recipes: print(r['title'],len(r['ingredients']),len(r['steps']))
