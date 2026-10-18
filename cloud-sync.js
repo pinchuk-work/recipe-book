@@ -4,7 +4,7 @@
   const GROUPS=['overrides','favorites','basket','checked','photos'];
   const clone=v=>JSON.parse(JSON.stringify(v));
   const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-  window.createRecipeCloud=({config,apply,status,storage=localStorage,fetcher=fetch})=>{
+  window.createRecipeCloud=({config,apply,status,legacy=()=>({}),storage=localStorage,fetcher=fetch})=>{
     const enabled=!!(config?.url&&config?.publishableKey);
     const root=(config?.url||'').replace(/\/$/,'');
     const prefix='k-stolu.cloud.v1.'+root;
@@ -75,6 +75,11 @@
       write('.book.'+identity,book);
       const saved=read(queueKey(),{});pending=saved.pending||{};conflicts=saved.conflicts||{};rows=saved.rows||{};
       publish(true);await pull();
+      if(!read('.migrated.'+identity,false)){
+        const previous=legacy(),combined=compose();
+        for(const group of GROUPS)for(const [key,value] of Object.entries(previous[group]||{}))if(!rows[id(group,key)]&&!pending[id(group,key)])combined[group][key]=clone(value);
+        capture(combined);publish(true);write('.migrated.'+identity,true);
+      }
       if(timer)clearInterval(timer);
       timer=setInterval(()=>{void flush();void pull().catch(()=>notify('Нет связи с базой. Правки сохраняются на устройстве.'));},10000);
       void flush();notify();
