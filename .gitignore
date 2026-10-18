@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.mp4
+*.part
+node_modules/
+.DS_Store
+Thumbs.db
+tools/qa/
+tools/contact.jpg

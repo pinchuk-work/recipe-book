@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f4">
+  <meta name="description" content="Моя коллекция любимых рецептов: ингредиенты, приготовление и список покупок.">
+  <title>К столу — моя книга рецептов</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="recipes.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <a class="brand" href="#" aria-label="К столу — все рецепты"><span class="brand-icon">✳</span> к столу<span class="brand-dot">.</span></a>
+    <span class="header-note">Личная книга рецептов</span>
+    <nav aria-label="Главная навигация"><button class="icon-button" id="shopping-nav" title="Список покупок" aria-label="Список покупок"></button><button class="icon-button" id="settings-nav" title="Настройки и резервная копия" aria-label="Настройки и резервная копия"></button></nav>
+  </div></header>
+  <main id="app"><p class="loading">Открываем книгу рецептов…</p></main>
+  <footer class="site-footer"><span>Хорошая еда начинается с хорошего рецепта.</span><span>Моя маленькая кулинарная коллекция</span></footer>
+  <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript>Для поиска и карточек рецептов включите JavaScript в браузере.</noscript>
+</body>
+</html>
